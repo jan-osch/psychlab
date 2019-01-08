@@ -1,8 +1,9 @@
-import React from 'react'
+import React, {Fragment} from 'react'
 
 import './picker.css'
+import {generateClueReport, generatePickerReport} from '../excel';
 
-const PICKER_NODES = {
+export const PICKER_NODES = {
     TEXT: 'TEXT',
     EMPTY: 'EMPTY',
     RIGHT: 'RIGHT',
@@ -10,47 +11,19 @@ const PICKER_NODES = {
     RESULT: 'RESULT'
 };
 
-const PICKER_PATH = [
-    {
-        type: PICKER_NODES.TEXT,
-        value: ['Naciśnij "/" gdy w ramce po prawej stronie pojawi się znak "X"', 'Odpowiedz najszybciej jak potrafisz.', 'Aby kontyunować naciśnij dowolny przycisk'],
-        anyKey: true,
-    },
-    {
-        type: PICKER_NODES.TEXT,
-        value: 'Zadanie zacznie się za 2 sekundy',
-        duration: 2000,
-    },
-    {
-        type: PICKER_NODES.EMPTY,
-        duration: 1200
-    },
-    {
-        type: PICKER_NODES.LEFT,
-        keyCode: 90,
-    },
-    {
-        type: PICKER_NODES.RIGHT,
-        keyCode: 191,
-    },
-    {
-        type: PICKER_NODES.EMPTY,
-        duration: 1000
-    },
-    {
-        type: PICKER_NODES.EMPTY,
-        duration: 2200
-    },
-    {
-        type: PICKER_NODES.LEFT,
-        keyCode: 90,
-    },
-    {
-        type: PICKER_NODES.RESULT
-    }
-];
-
 const RESULTS = [];
+
+const Shapes = ({left, right, halo}) => (
+    <div className="Shapes">
+        <div className={halo === 'left' ? 'Halo' : 'Distance'}>
+            <div className="Box">{left && <span>X</span>}</div>
+        </div>
+        <div className="Separator"/>
+        <div className={halo === 'right' ? 'Halo' : 'Distance'}>
+            <div className="Box">{right && <span>X</span>}</div>
+        </div>
+    </div>
+);
 
 class Picker extends React.Component {
 
@@ -58,10 +31,12 @@ class Picker extends React.Component {
         super(props);
         this.state = {
             index: 0,
-            time: null
+            time: null,
         };
         this.onKeyDown = this.onKeyDown.bind(this);
         this.nextStep = this.nextStep.bind(this);
+        this.downloadResults = this.downloadResults.bind(this);
+        this.timer = null;
     }
 
     componentWillMount() {
@@ -76,26 +51,43 @@ class Picker extends React.Component {
         this.setState({index: this.state.index + 1, stepStart: Date.now()}, () => {
             const currentStep = this.getCurrentStep();
             if (currentStep.duration) {
-                setTimeout(this.nextStep, currentStep.duration);
+                this.timer = setTimeout(this.nextStep, currentStep.duration);
             }
         })
     }
 
 
     onKeyDown(event) {
-        console.log(event.keyCode);
         const currentStep = this.getCurrentStep();
-        if (currentStep.anyKey) {
-            this.nextStep()
+        if (event.keyCode === 27) {
+            clearTimeout(this.timer);
+            this.setState({index: this.props.path.length - 1});
+            return;
         }
+
+        if (currentStep.anyKey) {
+            this.nextStep();
+            return;
+        }
+
         if (currentStep.keyCode) {
             const result = {
+                ...currentStep,
                 correct: currentStep.keyCode === event.keyCode,
-                wait: this.getPreviousStep().duration,
-                duration: Date.now() - this.state.stepStart
+                wait: currentStep.wait,
+                duration: Date.now() - this.state.stepStart,
             };
             RESULTS.push(result);
             this.nextStep();
+            return;
+        }
+    }
+
+    downloadResults() {
+        if (this.props.halo) {
+            generateClueReport(RESULTS)
+        } else {
+            generatePickerReport(RESULTS)
         }
     }
 
@@ -110,16 +102,58 @@ class Picker extends React.Component {
                     </div>);
 
             case PICKER_NODES.EMPTY:
-                return (<div className="Shapes">[_]{'         '}[_]</div>);
+                return (<Shapes halo={currentStep.halo}/>);
 
             case PICKER_NODES.RIGHT:
-                return (<div className="Shapes">[_]{'         '}[X]</div>);
+                return (<Shapes right/>);
 
             case PICKER_NODES.LEFT:
-                return (<div className="Shapes">[X]{'         '}[_]</div>);
+                return (<Shapes left/>);
 
             case PICKER_NODES.RESULT:
-                return (<div>{JSON.stringify(RESULTS, null, 2)}</div>);
+                return (
+                    <div>
+                        <table>
+                            <tbody>
+                            <tr>
+                                <th>Zadanie</th>
+                                <th>Odpowiedź poprawna</th>
+                                <th>Czas oczekiwania</th>
+                                <th>Czas reakcji</th>
+                                {
+                                    this.props.halo && (
+                                        <Fragment>
+                                            <th>Czas oczekiwania na wskazówkę</th>
+                                            <th>Czas wskazówki</th>
+                                            <th>Czas po wskazówce</th>
+                                        </Fragment>)
+                                }
+                            </tr>
+
+                            {
+                                RESULTS.map((row, index) => (
+                                    <tr key={index}>
+                                        <td>{index + 1}</td>
+                                        <td>{row.correct ? 'Tak' : 'Nie'}</td>
+                                        <td>{row.wait + ' ms'}</td>
+                                        <td>{row.duration + ' ms'}</td>
+
+                                        {
+                                            this.props.halo && (
+                                                <Fragment>
+                                                    <td>{row.waitForClue}</td>
+                                                    <td>{row.haloDuration}</td>
+                                                    <td>{row.postHaloDuration}</td>
+                                                </Fragment>)
+                                        }
+                                    </tr>
+                                ))
+                            }
+                            </tbody>
+                        </table>
+                        <button onClick={this.downloadResults}>Pobierz wyniki</button>
+                    </div>
+                );
 
             default:
                 return null;
@@ -127,11 +161,7 @@ class Picker extends React.Component {
     }
 
     getCurrentStep() {
-        return PICKER_PATH[this.state.index];
-    }
-
-    getPreviousStep() {
-        return PICKER_PATH[this.state.index - 1];
+        return this.props.path[this.state.index];
     }
 
     render() {
