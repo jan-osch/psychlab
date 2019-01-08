@@ -1,0 +1,26 @@
+.Empty {
+    font-size: 30px;
+}
+
+.Group {
+    display: flex;
+    flex-direction: row;
+    font-size: 40px;
+}
+
+.Test {
+    font-size: 40px;
+}
+
+.GroupSeparator {
+    width: 30px;
+}
+
+.Memory {
+    background: black;
+    color: white;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100%;
+}

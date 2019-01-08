@@ -1,25 +1,12 @@
-import React, {Fragment} from 'react'
+import React from 'react'
 
-import './picker.css'
-import {generateClueReport, generatePickerReport} from '../excel';
-import {Constants, KEY_CODES} from '../constants';
+import {Constants} from '../constants';
+import './scanning.css'
+import {generateMemoryReport} from '../excel';
 
 let RESULTS = [];
 
-const Shapes = ({left, right, halo}) => (
-    <div className="Shapes">
-        <div className={halo === 'left' ? 'Halo' : 'Distance'}>
-            <div className="Box">{left && <span>X</span>}</div>
-        </div>
-        <div className="Separator">+</div>
-        <div className={halo === 'right' ? 'Halo' : 'Distance'}>
-            <div className="Box">{right && <span>X</span>}</div>
-        </div>
-    </div>
-);
-
-class Picker extends React.Component {
-
+class MemoryScanning extends React.Component {
     constructor(props) {
         super(props);
         this.state = {
@@ -53,7 +40,7 @@ class Picker extends React.Component {
 
     onKeyDown(event) {
         const currentStep = this.getCurrentStep();
-        if (event.keyCode === KEY_CODES.ESC) {
+        if (event.keyCode === 27) {
             clearTimeout(this.timer);
             this.setState({index: this.props.path.length - 1});
             return;
@@ -78,11 +65,7 @@ class Picker extends React.Component {
     }
 
     downloadResults() {
-        if (this.props.halo) {
-            generateClueReport(RESULTS)
-        } else {
-            generatePickerReport(RESULTS)
-        }
+        generateMemoryReport(RESULTS)
     }
 
     renderStep() {
@@ -96,13 +79,26 @@ class Picker extends React.Component {
                     </div>);
 
             case Constants.EMPTY:
-                return (<Shapes halo={currentStep.halo}/>);
+                return (<div className="Empty">+</div>)
 
-            case Constants.RIGHT:
-                return (<Shapes right/>);
+            case Constants.GROUP:
+                return (
+                    <div className="Group">
+                        {currentStep.group[0]}
+                        <div className="GroupSeparator"/>
+                        {currentStep.group[1]}
+                        <div className="GroupSeparator"/>
+                        {currentStep.group[2]}
+                        <div className="GroupSeparator"/>
+                        {currentStep.group[3]}
+                    </div>);
 
-            case Constants.LEFT:
-                return (<Shapes left/>);
+            case Constants.TEST:
+                return (
+                    <div className="Test">
+                        {currentStep.test}
+                    </div>
+                );
 
             case Constants.RESULT:
                 return (
@@ -112,16 +108,10 @@ class Picker extends React.Component {
                             <tr>
                                 <th>Zadanie</th>
                                 <th>Odpowiedź poprawna</th>
-                                <th>Czas oczekiwania</th>
+                                <th>Całkowity Czas oczekiwania</th>
+                                <th>Czas grupy</th>
+                                <th>Czas oczekiwania po grupie</th>
                                 <th>Czas reakcji</th>
-                                {
-                                    this.props.halo && (
-                                        <Fragment>
-                                            <th>Czas oczekiwania na wskazówkę</th>
-                                            <th>Czas wskazówki</th>
-                                            <th>Czas po wskazówce</th>
-                                        </Fragment>)
-                                }
                             </tr>
 
                             {
@@ -129,23 +119,19 @@ class Picker extends React.Component {
                                     <tr key={index}>
                                         <td>{index + 1}</td>
                                         <td>{row.correct ? 'Tak' : 'Nie'}</td>
-                                        <td>{row.wait + ' ms'}</td>
-                                        <td>{row.duration + ' ms'}</td>
-
-                                        {
-                                            this.props.halo && (
-                                                <Fragment>
-                                                    <td>{row.waitForClue}</td>
-                                                    <td>{row.haloDuration}</td>
-                                                    <td>{row.postHaloDuration}</td>
-                                                </Fragment>)
-                                        }
+                                        <td>{row.totalWait + ' ms'}</td>
+                                        <td>{row.groupDuration + ' ms'}</td>
+                                        <td>{row.waitAfterGroup + ' ms'}</td>
+                                        <th>{row.duration + ' ms'}</th>
                                     </tr>
                                 ))
                             }
                             </tbody>
                         </table>
-                        <button onClick={this.downloadResults}>Pobierz wyniki</button>
+                        <button
+                            onClick={() => generateMemoryReport(RESULTS)}>
+                            Pobierz wyniki
+                        </button>
                     </div>
                 );
 
@@ -160,11 +146,11 @@ class Picker extends React.Component {
 
     render() {
         return (
-            <div className="Picker">
+            <div className="Memory">
                 {this.renderStep()}
             </div>
         )
     }
 }
 
-export default Picker;
+export default MemoryScanning;

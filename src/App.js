@@ -1,76 +1,34 @@
 import React, {Component} from 'react';
+
+import Picker from './components/Picker/Picker';
+import {Constants as PICKER_NODES} from './components/constants';
+import MemoryScanning from './components/MemoryScanning/MemoryScanning';
+import {generateClueTasks, generateDondersTasks, generateMemoryCases} from './components/generateTasks';
+
 import './App.css';
-import Picker, {PICKER_NODES} from './components/Picker/Picker';
-
-const getRandomDuration = ({low = 500, high = 4000} = {}) => Math.round(Math.random() * (high - low)) + low;
-const getRandomSide = (properties) => Math.random() > 0.5
-    ? {type: PICKER_NODES.LEFT, keyCode: 90, ...properties}
-    : {type: PICKER_NODES.RIGHT, keyCode: 191, ...properties};
-
-const generateTasks = n => {
-    const result = [];
-
-    for (let i = 0; i < n; i++) {
-        const randomDuration = getRandomDuration();
-        result.push({
-            type: PICKER_NODES.EMPTY,
-            duration: randomDuration
-        });
-        result.push(getRandomSide({wait: randomDuration}))
-    }
-
-    return result;
-};
-
-const generateHaloTasks = n => {
-    const result = [];
-
-    for (let i = 0; i < n; i++) {
-        const waitForClue = getRandomDuration();
-        let totalTime = waitForClue;
-        result.push({
-            type: PICKER_NODES.EMPTY,
-            duration: totalTime
-        });
-        const haloDuration = getRandomDuration({low: 0, high: 600});
-        totalTime += haloDuration;
-
-        const halo = Math.random() > 0.5 ? 'right' : 'left';
-        result.push({
-            type: PICKER_NODES.EMPTY,
-            duration: haloDuration,
-            halo: halo
-        });
-        const postHaloDuration = getRandomDuration({low: 0, high: 1000});
-        result.push({
-            type: PICKER_NODES.EMPTY,
-            duration: postHaloDuration
-        });
-        totalTime += postHaloDuration;
-        result.push(getRandomSide({wait: totalTime, halo, haloDuration, postHaloDuration, waitForClue }))
-    }
-
-    return result;
-};
 
 const PICKER_PATH = [
     {
         type: PICKER_NODES.TEXT,
         value: [
-            'Naciśnij "/" gdy w ramce po prawej stronie pojawi się znak "X"',
-            'Gdy znak X pojawi się po lewej stronie naciśnij "Z"',
+            'Naciśnij klawisz "/" jeżeli w ramce po prawej stronie pojawi się znak X',
+            'Jeżeli znak X pojawi się po lewej stronie naciśnij klawisz "Z"',
             'Odpowiedz najszybciej jak potrafisz.',
-            'Aby kontyunować naciśnij dowolny przycisk',
-            'Aby zakończyć i przejść do wyników naciśnij "ESC"'
+            <br/>,
+            'Aby kontyunować naciśnij dowolny przycisk.',
         ],
         anyKey: true,
     },
     {
         type: PICKER_NODES.TEXT,
-        value: 'Zadanie zacznie się za 2 sekundy',
+        value: [
+            'Zadanie zacznie się za 2 sekundy',
+            <br/>,
+            'Aby zakończyć i przejść do wyników w dowolnym momencie naciśnij "ESC"',
+        ],
         duration: 2000,
     },
-    ...generateTasks(10),
+    ...generateDondersTasks(10),
     {
         type: PICKER_NODES.RESULT
     }
@@ -82,43 +40,76 @@ const PICKER_WITH_HALO = [
         value: [
             'Gdy znak X pojawi się po prawej stronie naciśnij "/"',
             'Gdy znak X pojawi się po lewej stronie naciśnij "Z"',
-            'Wskazówka która pojawi się przed zadaniem nie ma charakteru informacyjnego',
+            'Wskazówka która pojawi się przed zadaniem nie ma wpływu na pozycję znaku X',
             'Odpowiedz najszybciej jak potrafisz.',
-            'Aby kontyunować naciśnij dowolny przycisk',
-            'Aby zakończyć i przejść do wyników naciśnij "ESC"'
+            <br/>,
+            'Aby kontyunować naciśnij dowolny przycisk.',
         ],
         anyKey: true,
     },
     {
         type: PICKER_NODES.TEXT,
-        value: 'Zadanie zacznie się za 2 sekundy',
+        value: [
+            'Zadanie zacznie się za 2 sekundy',
+            <br/>,
+            'Aby zakończyć i przejść do wyników w dowolnym momencie naciśnij "ESC"',
+        ],
         duration: 2000,
     },
-    ...generateHaloTasks(10),
+    ...generateClueTasks(10),
     {
         type: PICKER_NODES.RESULT
     }
 ];
 
+const MEMORY_PATH = [
+    {
+        type: PICKER_NODES.TEXT,
+        value: [
+            'Na ekranie najpierw pojawi się grupa cyfr a następnie jedna testowa cyfra',
+            'Naciśnij "/" jeżeli testowa cyfra była obecna grupie cyfr.',
+            'Naciśnij "Z" jeżeli testowa cyfra nie była obecna w grupie cyfr',
+            'Odpowiedz najszybciej jak potrafisz.',
+            <br/>,
+            'Aby kontyunować naciśnij dowolny przycisk.',
+        ],
+        anyKey: true
+    },
+    {
+        type: PICKER_NODES.TEXT,
+        value: [
+            'Zadanie zacznie się za 2 sekundy',
+            'Aby zakończyć i przejść do wyników w dowolnym momencie naciśnij "ESC"',
+        ],
+        duration: 2000,
+    },
+    ...generateMemoryCases(10),
+    {type: PICKER_NODES.RESULT}
+];
+
 const OPTIONS = [
     {
-        title: 'Picker',
+        title: 'Donders',
         component: <Picker path={PICKER_PATH}/>
     },
 
     {
-        title: 'Halo',
+        title: 'Inhibition Of Return',
         component: <Picker path={PICKER_WITH_HALO} halo/>
+    },
+
+    {
+        title: 'Memory scanning',
+        component: <MemoryScanning path={MEMORY_PATH}/>
     }
 ];
-
 
 class App extends Component {
     constructor(props) {
         super(props);
         this.state = {
             selected: null
-        }
+        };
         this.selectTask = this.selectTask.bind(this);
         this.goBack = this.goBack.bind(this);
     }
@@ -136,8 +127,9 @@ class App extends Component {
             return (
                 <div className="App">
                     {OPTIONS.map(({title}, index) =>
-                        <div onClick={() => this.selectTask(index)} key={title}> {title}
-                        </div>
+                        <div
+                            className="Selector"
+                            onClick={() => this.selectTask(index)} key={title}> {title}</div>
                     )}
                 </div>
             )
@@ -146,7 +138,7 @@ class App extends Component {
 
         return (
             <div className="App">
-                <button onClick={this.goBack}>Go back</button>
+                <button onClick={this.goBack}>Powrót</button>
                 {Current}
             </div>
         );

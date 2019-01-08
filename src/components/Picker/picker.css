@@ -40,4 +40,6 @@
 .Separator {
     display: inline-block;
     width: 200px;
+    font-size: 30px;
+    padding-top: 26px;
 }
